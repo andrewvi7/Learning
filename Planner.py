@@ -1,4 +1,5 @@
 import pandas as pd
+import _pickle as pickle
 
 
 class Goals:
@@ -8,11 +9,22 @@ class Goals:
         self.record = record
 
 
+def save_data():
+    with open('data.obj', 'wb') as file:
+        pickle.dump(goals_lst, file)
+
+
+def load_data():
+    global goals_lst
+    file = open('data.obj', 'rb')
+    goals_lst = pickle.load(file)
+
+
 def menu():
-    options = {'0': " - View planner for current weak",
+    options = {'0': " - View planner for current week",
                '1': " - View goals:",
                '2': " - New goal",
-               '3': " - Delete Goal"}
+               '3': " - Delete goal"}
     for idx, idx_name in options.items():
         print(idx, idx_name)
     option = input("...: ")
@@ -49,8 +61,9 @@ def week_view():
 def new_goal():
     print("New goal details")
     name = input('Name: ')
-    desc = input('Description')
+    desc = input('Description: ')
     goals_lst.append(Goals(name, desc))
+    save_data()
 
 
 def view():
@@ -67,11 +80,9 @@ def del_goal():
     option = int(input("Goal to delete: "))
     if 0 < option <= len(goals_lst):
         _waste = goals_lst.pop(option - 1)
+    save_data()
 
 
 goals_lst = []
-goals_lst.append(Goals("Running", "Forest fields and back"))
-goals_lst.append(Goals("Gym", "Weights session"))
-goals_lst.append(Goals("Reading", "1h each session"))
-print(goals_lst)
+load_data()
 menu()
