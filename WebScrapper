@@ -45,8 +45,7 @@ for prpty in data.find_all('article'):
     property_id = prpty.attrs['data-id']
     property_link = prpty.find('a', {'class': 'ann-box-title'}).attrs['href']
     property_price = prpty.find('span', {'class': 'ann-price'}).text
-    property_price = sub(r"\([^()]*\)", '',
-                         property_price)  # removes any additional text in () eg. "(price reduced 10%)" within the price field
+    property_price = sub(r"\([^()]*\)", '', property_price)  # removes any additional text in () eg. "(price reduced 10%)" within the price field
     if property_price.startswith('CO$'):
         property_price = float(property_price.replace('CO$', '').replace(',', ''))
     else:
