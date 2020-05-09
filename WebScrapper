@@ -1,0 +1,54 @@
+from urllib.request import Request, urlopen
+from bs4 import BeautifulSoup
+from re import sub
+
+data = None  # Initialising
+
+
+def scrape(url):
+    global data
+    raw_data = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    data = urlopen(raw_data).read()
+    data = BeautifulSoup(data, 'html5lib')
+
+
+def save():
+    file = open('webpage.txt', 'w', encoding='UTF-8')
+    file.write(str(data))
+    file.close()
+
+
+def load():
+    global data
+    data = BeautifulSoup(open('webpage.txt', 'r', encoding='UTF-8'), 'html5lib')
+
+
+def usd_to_cop(dollars):
+    page = Request('https://www.google.com/search?q=usd+to+cop&rlz=1C1CHBF_en-GBGB882GB882&oq=usd+to+cop&aqs=chrome'
+                   '..69i57j0l7.12158j1j7&sourceid=chrome&ie=UTF-8', headers={'User-Agent': 'Mozilla/5.0'})
+    open_page = urlopen(page).read()
+    page = BeautifulSoup(open_page, 'html5lib')
+    for currency in page.find_all('div', {'class': 'ZINbbc xpd O9g5cc uUPGi'}):
+        try:
+            x = str(currency.find('div', {'class': 'BNeawe iBp4i AP7Wnd'}).text).split()
+            x = float(x[0].replace(',', '')) * dollars
+            print(x)
+            return x
+        finally:
+            break
+
+
+scrape("https://www.encuentra24.com/colombia-en/searchresult/real-estate-for-sale?q=withcat.|f_currency.cop|notcat.|imagesonly.|advancedsearch.&regionslug=bolivar-cartagena")
+
+properties = []
+for prpty in data.find_all('article'):
+    property_id = prpty.attrs['data-id']
+    property_link = prpty.find('a', {'class': 'ann-box-title'}).attrs['href']
+    property_price = prpty.find('span', {'class': 'ann-price'}).text
+    property_price = sub(r"\([^()]*\)", '',
+                         property_price)  # removes any additional text in () eg. "(price reduced 10%)" within the price field
+    if property_price.startswith('CO$'):
+        property_price = float(property_price.replace('CO$', '').replace(',', ''))
+    else:
+        print(usd_to_cop(1000))
+    print(property_price)
