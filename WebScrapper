@@ -1,26 +1,32 @@
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 from re import sub
+import pandas as pd
 
+count = 0
 data = None  # Initialising
+properties = pd.DataFrame(None, columns=['Property ID', 'Bedrooms', 'Property size (m2)', 'Price', 'Link'])
 
 
 def scrape(url):
     global data
+    global count
     raw_data = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    count += 1
+    print('Scrapping page {}'.format(count))
     data = urlopen(raw_data).read()
     data = BeautifulSoup(data, 'html5lib')
+    save()
+    property_scrape()
 
 
 def save():
-    file = open('webpage.txt', 'w', encoding='UTF-8')
-    file.write(str(data))
-    file.close()
+    properties.to_csv(r'properties.csv')
 
 
 def load():
     global data
-    data = BeautifulSoup(open('webpage.txt', 'r', encoding='UTF-8'), 'html5lib')
+    data = BeautifulSoup(open('properties.csv', 'r', encoding='UTF-8'), 'html5lib')
 
 
 def usd_to_cop(dollars):
@@ -29,25 +35,51 @@ def usd_to_cop(dollars):
     open_page = urlopen(page).read()
     page = BeautifulSoup(open_page, 'html5lib')
     for currency in page.find_all('div', {'class': 'ZINbbc xpd O9g5cc uUPGi'}):
-        try:
-            x = str(currency.find('div', {'class': 'BNeawe iBp4i AP7Wnd'}).text).split()
-            x = float(x[0].replace(',', '')) * dollars
-            print(x)
-            return x
-        finally:
-            break
+        x = str(currency.find('div', {'class': 'BNeawe iBp4i AP7Wnd'}).text).split()
+        return float(x[0].replace(',', '')) * dollars
+
+
+def property_scrape():
+    global properties
+    for prpty in data.find_all('article'):
+        property_id = prpty.attrs['data-id']
+        property_link = prpty.find('a', {'class': 'ann-box-title'}).attrs['href']
+        property_price = prpty.find('span', {'class': 'ann-price'}).text
+        property_price = sub(r"\([^()]*\)", '',
+                             property_price)  # removes any additional text in () eg. "(price reduced 10%)" within the price field
+        if property_price.startswith('CO$'):
+            property_price = float(property_price.replace('CO$', '').replace(',', ''))
+        else:
+            property_price = usd_to_cop(float(property_price.replace('$', '').replace(',', '')))
+        property_size = float(prpty.find('span', {'class': 'value'}).text.replace('m2', ''))
+        property_bedrooms = prpty.find_all('span', {'class': 'value'})[1].text
+        if property_bedrooms.isnumeric():
+            property_bedrooms = int(property_bedrooms)
+        else:
+            property_bedrooms = None
+
+        #  Pandas section
+        dataframe = pd.DataFrame([[property_id, property_bedrooms, int(property_size), int(property_price), property_link]],
+                                 columns=['Property ID', 'Bedrooms', 'Property size (m2)', 'Price', 'Link'])
+        if property_id in properties['Property ID']:
+            print(property_id + " already exists")
+            continue
+        else:
+            properties = properties.append(dataframe, ignore_index=True)
+    save()
+    next_page()
+
+
+def next_page():
+    for page in data.find_all('li', {'class': 'arrow'}):
+        scrape('https://www.encuentra24.com' + page.find(['a'])['href'])
+        break
 
 
 scrape("https://www.encuentra24.com/colombia-en/searchresult/real-estate-for-sale?q=withcat.|f_currency.cop|notcat.|imagesonly.|advancedsearch.&regionslug=bolivar-cartagena")
+print(properties.iloc[:, :4])
 
-properties = []
-for prpty in data.find_all('article'):
-    property_id = prpty.attrs['data-id']
-    property_link = prpty.find('a', {'class': 'ann-box-title'}).attrs['href']
-    property_price = prpty.find('span', {'class': 'ann-price'}).text
-    property_price = sub(r"\([^()]*\)", '', property_price)  # removes any additional text in () eg. "(price reduced 10%)" within the price field
-    if property_price.startswith('CO$'):
-        property_price = float(property_price.replace('CO$', '').replace(',', ''))
-    else:
-        print(usd_to_cop(1000))
-    print(property_price)
+
+
+
+
