@@ -76,14 +76,12 @@ def property_scrape():
 def next_page():
     for page in data.find_all('li', {'class': 'arrow'}):
         attributes = page.find('a').attrs
-        print(attributes)
         if attributes['rel'] == ['next']:
-            print(page.find(['a', {'rel': 'next'}])['href'])
             scrape('https://www.encuentra24.com' + page.find(['a', {'rel': 'next'}])['href'])
             break
         else:
             print("Can't find next page")
-            
+
 
 scrape("https://www.encuentra24.com/colombia-en/real-estate-for-sale-apartments-condos")
 print(properties.iloc[:, :4])
