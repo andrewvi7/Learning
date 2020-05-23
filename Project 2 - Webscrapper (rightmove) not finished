@@ -1,0 +1,51 @@
+from urllib.request import Request, urlopen
+from bs4 import BeautifulSoup
+import sqlite3
+from selenium import webdriver
+
+count = 1
+
+
+def scrape_url(url):
+    request = Request(url, headers={'user-agent': 'Mozilla/5.0'})
+    page = urlopen(request)
+    if page.getcode() == 200:
+        page = page.read()
+        return BeautifulSoup(page, 'html5lib')
+
+    else:
+        print("Error has occurred accessing the page, code {}".format(page.getcode()))
+
+
+def data_scrape():
+    for prpty in page_data.find_all('div', {'class': 'l-searchResult is-list'}):
+        id = int(prpty.attrs['id'].replace('property-', ''))
+        address = prpty.find('address', {'class': 'propertyCard-address'}).text.strip()
+        price = int(prpty.find('span', {'class': 'propertyCard-priceValue'}).text.replace('pcm', '').replace('£', '').replace(',', ''))
+        search = prpty.find('h2', {'class': 'propertyCard-title'}).text.strip().split()
+        if search[0].isdigit() and search[1] == 'bedroom':
+            bedrooms = int(search[0])
+            search.pop(0)
+            search.pop(0)
+            property_type = ' '.join(search).capitalize()
+        else:
+            bedrooms = 1
+            property_type = ' '.join(search).capitalize()
+        description = prpty.find('span', {'itemprop': 'description'}).text
+        agent = prpty.find('span', {'class': 'propertyCard-branchSummary-branchName'}).text.replace('by ', '')
+        params = (id, address, price, bedrooms, property_type, description, agent)
+        database.execute('INSERT INTO properties VALUES(?, ?, ?, ?, ?, ?, ?)', params)
+    global count
+    print("Page {} scrapped".format(count))
+    count += 1
+    print(page_data)
+
+
+url = 'https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=REGION%5E1019&propertyTypes=&includeLetAgreed=false&mustHave=&dontShow=&furnishTypes=&keywords='
+database = sqlite3.connect('properties.sqlite')  # Initializing SQLite database
+database.execute('CREATE TABLE IF NOT EXISTS properties(ID INTEGER, address TEXT, price INTEGER, bedrooms INTEGER,'
+                 'type_of_property TEXT, description TEXT, agent TEXT)')
+page_data = scrape_url(url)
+data_scrape()
+#  database.commit()
+database.close()
