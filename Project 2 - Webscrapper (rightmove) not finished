@@ -1,17 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
 import sqlite3
-
+import re
 
 page_num = 1
 count = 24
 page_data = None
 
 
-def scrape():
-    scrape_url(url)
-
-
+def scrape_url(url):
+    global page_data
+    request = requests.get(url)
+    if request.status_code == 200:
+        page_data = BeautifulSoup(request.content, 'html5lib')
+    elif request.status_code == 400:
+        print("Scrapping finished, or cannot access URL")
+        return
+    else:
+        print("Error has occurred accessing the page")
+        return 
+    data_scrape()
+    
+    
 def next_page():
     global url
     global page_data
@@ -24,25 +34,14 @@ def next_page():
     scrape_url(url)
 
 
-def scrape_url(url):
-    global page_data
-    request = requests.get(url)
-    if request.status_code == 200:
-        page_data = BeautifulSoup(request.content, 'html5lib')
-    elif request.status_code == 400:
-        print("End of scrape, error - " + str(request.status_code))
-        return
-    else:
-        print("Error has occurred accessing the page")
-    data_scrape()
-
-
 def data_scrape():
     global page_num
     for prpty in page_data.find_all('div', {'class': 'l-searchResult is-list'}):
         id = int(prpty.attrs['id'].replace('property-', ''))
         address = prpty.find('address', {'class': 'propertyCard-address'}).text.strip()
-        price = int(prpty.find('span', {'class': 'propertyCard-priceValue'}).text.replace('pcm', '').replace('£', '').replace(',', ''))
+        address = re.sub(r"\*[^()]*\*", '', address).replace('short stay', '').replace('long stay', '')  # Removes any and all text between *, ex text about discounts etc
+        price = int(prpty.find('span', {'class': 'propertyCard-priceValue'}).text.lower().replace('pcm', '').replace('£', '')
+                    .replace(',', ''))
         search = prpty.find('h2', {'class': 'propertyCard-title'}).text.strip().split()
         if search[0].isdigit() and search[1] == 'bedroom':
             bedrooms = int(search[0])
@@ -57,7 +56,7 @@ def data_scrape():
         params = (id, address, price, bedrooms, property_type, description, agent)
         print(params)
         database.execute('INSERT INTO properties VALUES(?, ?, ?, ?, ?, ?, ?)', params)
-    print("Scrapped a page {}".format(page_num))
+    print("Scrapped page {}...".format(page_num))
     page_num += 1
     next_page()
 
@@ -66,7 +65,7 @@ url = 'https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier
 database = sqlite3.connect('properties.sqlite')  # Initializing SQLite database
 database.execute('CREATE TABLE IF NOT EXISTS properties(ID INTEGER, address TEXT, price INTEGER, bedrooms INTEGER,'
                  'type_of_property TEXT, description TEXT, agent TEXT)')
+scrape_url(url)
 
-scrape()
 database.commit()
 database.close()
