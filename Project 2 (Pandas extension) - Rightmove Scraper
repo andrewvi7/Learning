@@ -1,0 +1,89 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import pandas as pd
+import matplotlib.pyplot as plt
+
+#  Scrapping section
+
+page_num = 1
+count = 24
+page_data = None
+data = pd.DataFrame(None, columns=['ID', 'Address', 'Price', 'Number of bedrooms', 'Property type', 'Description', 'Agent'])
+
+
+def scrape_url(url):
+    global page_data
+    request = requests.get(url)
+    if request.status_code == 200:
+        page_data = BeautifulSoup(request.content, 'html5lib')
+    elif request.status_code == 400:
+        print("Scrapping finished, or cannot access URL")
+        return
+    else:
+        print("Error has occurred")
+        return
+    data_scrape()
+
+
+def next_page():
+    global url
+    global page_data
+    if '&index=' in url:
+        global count
+        url = url.replace('&index={}'.format(count), '&index={}'.format(count + 24))
+        count += 24
+    else:
+        url = url + '&index=24'
+    scrape_url(url)
+
+
+def data_scrape():
+    global page_num
+    for prpty in page_data.find_all('div', {'class': 'l-searchResult is-list'}):
+        id = int(prpty.attrs['id'].replace('property-', ''))
+        address = prpty.find('address', {'class': 'propertyCard-address'}).text.strip()
+        address = re.sub(r"\*[^()]*\*", '', address).replace('short stay', '').replace('long stay', '')  # Removes any and all text between *, like text about discounts etc
+        try:
+            price = float(prpty.find('span', {'class': 'propertyCard-priceValue'}).text.lower().replace('pcm', '')
+                        .replace('£', '').replace(',', ''))
+        except ValueError:
+            price = None
+        search = prpty.find('h2', {'class': 'propertyCard-title'}).text.strip().split()
+        if search[0].isdigit() and search[1] == 'bedroom':
+            bedrooms = int(search[0])
+            search.pop(0)
+            search.pop(0)
+            property_type = ' '.join(search).capitalize()
+        else:
+            bedrooms = 1
+            property_type = ' '.join(search).capitalize()
+        description = prpty.find('span', {'itemprop': 'description'}).text
+        agent = prpty.find('span', {'class': 'propertyCard-branchSummary-branchName'}).text.replace('by ', '')
+        new_set = pd.DataFrame([[id, address, price, bedrooms, property_type, description, agent]],
+                               columns=['ID', 'Address', 'Price', 'Number of bedrooms', 'Property type', 'Description', 'Agent'])
+        global data
+        data = data.append(new_set, ignore_index=True)
+    print("Scrapped page {}...".format(page_num))
+    page_num += 1
+    next_page()
+
+
+url = 'https://www.rightmove.co.uk/property-to-rent/find.html?locationIdentifier=REGION%5E1019&propertyTypes=&includeLetAgreed=false&mustHave=&dontShow=&furnishTypes=&keywords='
+scrape_url(url)
+
+
+#  Pandas and matplotlib section
+
+data = data.drop(data.columns[0], axis=1)
+data.loc[data['Property type'] == 'Flat', 'Property type'] = 'Apartment'
+data.loc[data['Property type'] == 'Studio flat', 'Property type'] = 'Apartment'
+data['Price'] = data['Price'].apply(pd.to_numeric, errors='coerce')
+for prpty_type in data['Property type'].value_counts().index[0:5]:
+    x = data[data['Property type'] == '{}'.format(prpty_type)].sort_values(['Number of bedrooms', 'Price']).groupby(['Number of bedrooms']).Price.mean()
+    x.plot(kind='line', x='Number of bedrooms', y='Price', marker='x')
+plt.title('Property values per bedrooms, for current web-scrape')
+plt.ylabel('£ per month')
+plt.legend(data['Property type'].value_counts().index[0:5])
+plt.tight_layout()
+plt.show()
