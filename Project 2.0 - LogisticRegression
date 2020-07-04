@@ -1,3 +1,19 @@
+# Sample of the datasdet used
+# Daily Time Spent on Site,Age,Area Income,Daily Internet Usage,Ad Topic Line,City,Male,Country,Timestamp,Clicked on Ad
+# 68.95,35,61833.9,256.09,Cloned 5thgeneration orchestration,Wrightburgh,0,Tunisia,2016-03-27 00:53:11,0
+# 80.23,31,68441.85,193.77,Monitored national standardization,West Jodi,1,Nauru,2016-04-04 01:39:02,0
+# 69.47,26,59785.94,236.5,Organic bottom-line service-desk,Davidton,0,San Marino,2016-03-13 20:35:42,0
+# 74.15,29,54806.18,245.89,Triple-buffered reciprocal time-frame,West Terrifurt,1,Italy,2016-01-10 02:31:19,0
+# 68.37,35,73889.99,225.58,Robust logistical utilization,South Manuel,0,Iceland,2016-06-03 03:36:18,0
+# 59.99,23,59761.56,226.74,Sharable client-driven software,Jamieberg,1,Norway,2016-05-19 14:30:17,0
+# 88.91,33,53852.85,208.36,Enhanced dedicated support,Brandonstad,0,Myanmar,2016-01-28 20:59:32,0
+# 66.0,48,24593.33,131.76,Reactive local challenge,Port Jefferybury,1,Australia,2016-03-07 01:40:15,1
+# 74.53,30,68862.0,221.51,Configurable coherent function,West Colin,1,Grenada,2016-04-18 09:33:42,0
+# 69.88,20,55642.32,183.82,Mandatory homogeneous architecture,Ramirezton,1,Ghana,2016-07-11 01:42:51,0
+# 47.64,49,45632.51,122.02,Centralized neutral neural-net,West Brandonton,0,Qatar,2016-03-16 20:19:01,1
+
+
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -27,8 +43,6 @@ sns.jointplot(data['Age'], data['Daily Time Spent on Site'], kind='kde')
 plt.show()
 
 # Logistic Regression
-X = data.iloc[:, :-1]
-Y = data.iloc[:, -1]
 scaler = MinMaxScaler()
 data = scaler.fit_transform(data)
 scaled_data = pd.DataFrame(data)
