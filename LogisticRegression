@@ -1,0 +1,42 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import MinMaxScaler
+
+# PANDAS options and file import
+pd.set_option('display.width', None)
+pd.set_option('display.max_columns', 100)
+data = pd.read_csv('Udemy/13-Logistic-Regression/advertising.csv')
+
+
+# Data-cleaning
+cntry_list = data['Country'].drop_duplicates().tolist()
+data['Country'] = data['Country'].apply(cntry_list.index)
+data.drop(['Ad Topic Line', 'City'], axis=1, inplace=True)  # Cities and topics too unique
+data['Timestamp'] = pd.to_datetime(data['Timestamp'], yearfirst=True)
+data['Timestamp'] = data['Timestamp'].dt.hour
+
+# Seaborn's data analysis
+sns.scatterplot('Daily Time Spent on Site', 'Daily Internet Usage', data=data, hue=data['Clicked on Ad'].apply(lambda x: 'Yes' if x == 0 else 'No'))
+sns.jointplot(data['Age'], data['Area Income'], s=5)
+plt.tight_layout()
+sns.jointplot(data['Age'], data['Daily Time Spent on Site'], kind='kde')
+plt.show()
+
+# Logistic Regression
+X = data.iloc[:, :-1]
+Y = data.iloc[:, -1]
+scaler = MinMaxScaler()
+data = scaler.fit_transform(data)
+scaled_data = pd.DataFrame(data)
+
+X_train, X_test, Y_train, Y_test = train_test_split(scaled_data.iloc[:, :-1], scaled_data.iloc[:, -1], test_size=0.2)
+mdl = LogisticRegression()
+mdl.fit(X_train, Y_train)
+predictions = mdl.predict(X_test)
+results = confusion_matrix(Y_test, predictions)
+
+
